@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Zonificación — Municipio de Querétaro</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:Arial,sans-serif}
+#map{width:100vw;height:100vh}
+
+#header{position:absolute;top:0;left:0;right:0;z-index:1000;background:rgba(27,58,92,0.93);padding:8px 16px}
+#header h1{font-size:13px;font-weight:bold;color:white}
+#header p{font-size:10px;color:#AECDE0;margin-top:2px}
+
+#capas{position:absolute;top:58px;left:10px;z-index:1000;background:rgba(255,255,255,0.96);border-radius:8px;padding:10px 14px;box-shadow:0 2px 8px rgba(0,0,0,0.18);min-width:165px}
+#capas h4{font-size:10px;font-weight:bold;color:#1B3A5C;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;border-bottom:1px solid #eee;padding-bottom:4px}
+.capa-row{display:flex;align-items:center;gap:7px;margin-bottom:6px}
+.capa-row input{cursor:pointer;accent-color:#1B3A5C}
+.capa-row label{font-size:11px;color:#333;cursor:pointer}
+.dot{width:12px;height:12px;border-radius:2px;flex-shrink:0}
+
+#leyenda{position:absolute;bottom:28px;right:10px;background:rgba(255,255,255,0.96);border-radius:8px;padding:10px 12px;z-index:1000;max-height:70vh;overflow-y:auto;box-shadow:0 2px 8px rgba(0,0,0,0.18);min-width:190px}
+#leyenda h4{font-size:10px;font-weight:bold;color:#1B3A5C;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid #eee;padding-bottom:4px}
+.ley-sec{font-size:9px;font-weight:bold;color:#aaa;text-transform:uppercase;margin:8px 0 4px;letter-spacing:0.5px}
+.ley-item{display:flex;align-items:flex-start;gap:5px;margin-bottom:3px}
+.ley-box{width:13px;height:13px;border-radius:2px;flex-shrink:0;border:1px solid rgba(0,0,0,0.1);margin-top:1px}
+.ley-clave{font-size:10px;font-weight:bold;color:#222}
+.ley-desc{font-size:9px;color:#888;display:block}
+
+.popup-tit{font-size:13px;font-weight:bold;color:#1B3A5C;border-bottom:2px solid #E07B39;padding-bottom:4px;margin-bottom:8px}
+.pg{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:4px}
+.pc{background:#f4f6f9;border-radius:4px;padding:4px 6px}
+.pc .l{font-size:9px;color:#999;text-transform:uppercase}
+.pc .v{font-size:13px;font-weight:bold;color:#1B3A5C}
+
+#loading{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(27,58,92,0.93);color:white;padding:20px 28px;border-radius:10px;text-align:center;z-index:9999;font-size:13px}
+.sp{width:26px;height:26px;border:3px solid rgba(255,255,255,0.15);border-top-color:#E07B39;border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto 10px}
+@keyframes spin{to{transform:rotate(360deg)}}
+#ltxt{font-size:11px;color:#AECDE0;margin-top:5px}
+
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-thumb{background:#1B3A5C;border-radius:2px}
+</style>
+</head>
+<body>
+
+<div id="header">
+  <h1>Zonificación Secundaria · Municipio de Santiago de Querétaro</h1>
+  <p>PMDUQ 2023 · PPDU-ZMBT 2018 · Solo informativo, sin validez oficial</p>
+</div>
+
+<div id="capas">
+  <h4>Capas</h4>
+  <div class="capa-row">
+    <input type="checkbox" id="chk-pmduq" checked>
+    <div class="dot" style="background:rgba(255,204,0,0.8)"></div>
+    <label for="chk-pmduq">Zonif. PMDUQ 2023</label>
+  </div>
+  <div class="capa-row">
+    <input type="checkbox" id="chk-zmbt">
+    <div class="dot" style="background:rgba(255,100,120,0.8)"></div>
+    <label for="chk-zmbt">Zonif. ZMBT 2018</label>
+  </div>
+</div>
+
+<div id="leyenda">
+  <h4>Leyenda</h4>
+  <div class="ley-sec">PMDUQ 2023</div>
+  <div id="ley-pmduq"></div>
+  <div class="ley-sec" style="margin-top:10px">ZMBT 2018</div>
+  <div id="ley-zmbt"></div>
+</div>
+
+<div id="map"></div>
+
+<div id="loading">
+  <div class="sp"></div>
+  Cargando zonificación...
+  <div id="ltxt"></div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const CP={
+  'CS-MAt':{c:'rgb(255,190,190)',d:'Comercial y Servicios MA'},
+  'HC-At': {c:'rgb(254,95,41)',  d:'Habitacional c/Comercio Alta'},
+  'HC-MdI':{c:'rgb(254,120,35)', d:'Habitacional c/Comercio Md.Int.'},
+  'HMM-Md':{c:'rgb(254,176,90)', d:'Habitacional Mixto Medio'},
+  'HM-Bj': {c:'rgb(245,162,122)',d:'Habitacional Mixto Baja'},
+  'HR':    {c:'rgb(255,231,217)',d:'Habitacional Rural'},
+  'H-MAt': {c:'rgb(235,200,0)',  d:'Habitacional Muy Alta'},
+  'H-At':  {c:'rgb(255,204,0)',  d:'Habitacional Alta'},
+  'H-MdI': {c:'rgb(255,227,41)', d:'Habitacional Media Intensiva'},
+  'H-Md':  {c:'rgb(255,237,107)',d:'Habitacional Media'},
+  'H-Bj':  {c:'rgb(255,237,161)',d:'Habitacional Baja'},
+  'H-Mn':  {c:'rgb(255,255,190)',d:'Habitacional Mínima'},
+  'H-As':  {c:'rgb(255,255,230)',d:'Habitacional Aislada'},
+  'IL':    {c:'rgb(208,179,246)',d:'Industria Ligera'},
+  'IM':    {c:'rgb(148,112,196)',d:'Industria Mediana'},
+  'IP':    {c:'rgb(106,28,163)', d:'Industria Pesada'},
+  'E':     {c:'rgb(0,92,230)',   d:'Equipamiento'},
+  'EVA':   {c:'rgb(126,171,85)', d:'Espacios Verdes y Abiertos'},
+  'CA':    {c:'rgb(212,232,197)',d:'Conservación Agropecuaria'},
+  'PE':    {c:'rgb(117,206,148)',d:'Protección Ecológica'},
+  'SR':    {c:'rgb(80,80,80)',   d:'Salvaguarda y Riesgo'},
+  'PCCA':  {c:'rgb(105,232,255)',d:'Protec. Cauces y Cuerpos de Agua'},
+};
+const CZ={
+  'MA 4+2R':{c:'rgb(255,82,97)',  d:'Mixto Alta densidad'},
+  'MB 4':   {c:'rgb(255,120,130)',d:'Mixto Media-Alta'},
+  'MC 4':   {c:'rgb(255,148,150)',d:'Mixto Media'},
+  'MZM 2':  {c:'rgb(255,190,190)',d:'Mixto Zona de Monumentos'},
+  'HMA 4':  {c:'rgb(255,224,135)',d:'Habitacional Mixto Alta'},
+  'HMB 3':  {c:'rgb(255,220,120)',d:'Habitacional Mixto Baja'},
+  'HMZM 2': {c:'rgb(255,210,100)',d:'Habitacional Mixto ZM'},
+  'HA 4':   {c:'rgb(255,255,214)',d:'Habitacional Alta'},
+  'HB 3':   {c:'rgb(255,255,200)',d:'Habitacional Baja'},
+  'HC 2+1R':{c:'rgb(255,255,185)',d:'Habitacional Conservación'},
+  'HD 2':   {c:'rgb(255,255,170)',d:'Habitacional Densidad 2'},
+  'HZM 2':  {c:'rgb(255,248,160)',d:'Habitacional Zona Monumentos'},
+  'EQ':     {c:'rgb(158,170,215)',d:'Equipamiento'},
+  'EQP':    {c:'rgb(140,155,205)',d:'Equipamiento Patrimonial'},
+  'AV':     {c:'rgb(170,255,0)',  d:'Área Verde'},
+  'EA':     {c:'rgb(204,224,122)',d:'Espacio Abierto'},
+};
+
+const map=L.map('map',{center:[20.595,-100.39],zoom:13});
+L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}',{
+  attribution:'© Google Maps',maxZoom:21
+}).addTo(map);
+
+function buildLey(id,col){
+  const d=document.getElementById(id);
+  Object.entries(col).forEach(([k,{c,d:desc}])=>{
+    d.innerHTML+=`<div class="ley-item"><div class="ley-box" style="background:${c}"></div><div><span class="ley-clave">${k}</span><span class="ley-desc">${desc}</span></div></div>`;
+  });
+}
+buildLey('ley-pmduq',CP);
+buildLey('ley-zmbt',CZ);
+
+function popupPMDUQ(p){
+  const cl=p.Nom_ZS_23||'—',ds=p.Des_Nom_ZS||'—';
+  const cos=p.COS??'—',cus=p.CUS??'—',niv=p.Niveles??'—';
+  const alt=p.Alt_Max_m?p.Alt_Max_m+' m':'—';
+  const al=p.Area_Libre?(p.Area_Libre*100).toFixed(0)+'%':'—';
+  const sm=p.Supf_Min?p.Supf_Min+' m²':'—';
+  const fm=p.Frent_Min?p.Frent_Min+' m':'—';
+  const fac=p.Factor??'—';
+  return `<div style="min-width:210px">
+    <div class="popup-tit">${cl} · ${ds}</div>
+    <div class="pg">
+      <div class="pc"><div class="l">COS</div><div class="v">${cos}</div></div>
+      <div class="pc"><div class="l">CUS</div><div class="v">${cus}</div></div>
+      <div class="pc"><div class="l">Niveles</div><div class="v">${niv}</div></div>
+      <div class="pc"><div class="l">Alt. máx.</div><div class="v">${alt}</div></div>
+      <div class="pc"><div class="l">Área libre</div><div class="v">${al}</div></div>
+      <div class="pc"><div class="l">Sup. mín.</div><div class="v">${sm}</div></div>
+      <div class="pc"><div class="l">Frente mín.</div><div class="v">${fm}</div></div>
+      <div class="pc"><div class="l">Factor den.</div><div class="v">${fac}</div></div>
+    </div></div>`;
+}
+
+function popupZMBT(p){
+  return `<div style="min-width:180px">
+    <div class="popup-tit">ZMBT 2018 · ${p.CLAVE_ZON||'—'}</div>
+    <div class="pg">
+      <div class="pc"><div class="l">Clave</div><div class="v">${p.CLAVE_ZON||'—'}</div></div>
+      <div class="pc"><div class="l">Nivel</div><div class="v">${p.NIV_ZON||'—'}</div></div>
+    </div>
+    <div style="margin-top:7px;font-size:11px;color:#555;line-height:1.7">
+      <b>Colonia:</b> ${p.COLONIA||'—'}<br>
+      <b>Uso:</b> ${p.USO_SUELO||'—'}
+    </div></div>`;
+}
+
+function makeLayer(data,colorFn,popupFn){
+  return L.geoJSON(data,{
+    style:f=>({fillColor:colorFn(f.properties),fillOpacity:0.65,color:'#fff',weight:0.5,opacity:0.8}),
+    onEachFeature:(f,l)=>{
+      l.bindPopup(popupFn(f.properties),{maxWidth:280});
+      l.on('mouseover',()=>l.setStyle({fillOpacity:0.9,weight:1.5,color:'#E07B39'}));
+      l.on('mouseout', ()=>l.setStyle({fillOpacity:0.65,weight:0.5,color:'#fff'}));
+    }
+  });
+}
+
+let lP,lZ,done=0;
+function check(){if(++done>=2)document.getElementById('loading').style.display='none';}
+
+document.getElementById('ltxt').textContent='Cargando PMDUQ 2023...';
+fetch('ZONA_FINAL.geojson').then(r=>r.json()).then(d=>{
+  lP=makeLayer(d,p=>CP[p.Nom_ZS_23]?.c||'#ccc',popupPMDUQ);
+  lP.addTo(map); check();
+}).catch(()=>check());
+
+fetch('ZMBT_FINAL.geojson').then(r=>r.json()).then(d=>{
+  lZ=makeLayer(d,p=>CZ[p.CLAVE_ZON]?.c||'#ccc',popupZMBT);
+  check();
+}).catch(()=>check());
+
+document.getElementById('chk-pmduq').addEventListener('change',function(){
+  this.checked?lP?.addTo(map):map.removeLayer(lP);
+});
+document.getElementById('chk-zmbt').addEventListener('change',function(){
+  if(this.checked&&lZ)lZ.addTo(map);
+  else if(lZ)map.removeLayer(lZ);
+});
+</script>
+</body>
+</html>
