@@ -56,20 +56,20 @@ body{font-family:Arial,sans-serif}
   <div class="capa-row">
     <input type="checkbox" id="chk-pmduq" checked>
     <div class="dot" style="background:rgba(255,204,0,0.8)"></div>
-    <label for="chk-pmduq">Zonif. PMDUQ 2023</label>
+    <label for="chk-pmduq">Zonificación Secundaria 2023</label>
   </div>
   <div class="capa-row">
     <input type="checkbox" id="chk-zmbt">
     <div class="dot" style="background:rgba(255,100,120,0.8)"></div>
-    <label for="chk-zmbt">Zonif. ZMBT 2018</label>
+    <label for="chk-zmbt">Zonificación Secundaria ZMBT 2018</label>
   </div>
 </div>
 
 <div id="leyenda">
   <h4>Leyenda</h4>
-  <div class="ley-sec">PMDUQ 2023</div>
+  <div class="ley-sec">Zonificación Secundaria 2023</div>
   <div id="ley-pmduq"></div>
-  <div class="ley-sec" style="margin-top:10px">ZMBT 2018</div>
+  <div class="ley-sec" style="margin-top:10px">Zonificación Secundaria ZMBT 2018</div>
   <div id="ley-zmbt"></div>
 </div>
 
@@ -144,7 +144,7 @@ function popupPMDUQ(p){
   const cl=p.Nom_ZS_23||'—',ds=p.Des_Nom_ZS||'—';
   const cos=p.COS??'—',cus=p.CUS??'—',niv=p.Niveles??'—';
   const alt=p.Alt_Max_m?p.Alt_Max_m+' m':'—';
-  const al=p.Area_Libre?(p.Area_Libre*100).toFixed(0)+'%':'—';
+  const al=p.Area_Libre!=null&&p.Area_Libre!==''?(p.Area_Libre/100).toFixed(2):'—';
   const sm=p.Supf_Min?p.Supf_Min+' m²':'—';
   const fm=p.Frent_Min?p.Frent_Min+' m':'—';
   const fac=p.Factor??'—';
